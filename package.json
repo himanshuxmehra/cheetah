@@ -1,0 +1,18 @@
+{
+  "name": "cheetah",
+  "version": "1.0.0",
+  "description": "Fast API client for cvent",
+  "workspaces": [
+    "packages/cheetah-app",
+    "packages/cheetah-electron"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "web": "npm run dev --workspace=packages/cheetah-app",
+    "dev": "npm run build --workspace=packages/cheetah-app && cp -r packages/cheetah-app/dist/* packages/cheetah-electron/src/output",
+    "start": "npm run dev && npm start --workspace=packages/cheetah-electron"
+  },
+  "author": "",
+  "license": "ISC"
+}

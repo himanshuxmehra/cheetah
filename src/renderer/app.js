@@ -1,35 +1,25 @@
 import { state, currentTab, envVars, persist, hydrate, newTab, newRequest, pushHistory, findRequest, METHODS, BODY_TYPES } from './state.js';
 import { escapeHtml, formatBytes, formatMs, statusClass, detectLanguage, prettify, highlight, interpolate, missingVars, uid } from './format.js';
 import { parseCurl, toCurl } from './curl.js';
+import { ICONS } from './icons.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const app = $('#app');
 const MOD = window.cheetah.platform === 'darwin' ? '⌘' : 'Ctrl';
 
-/* ── Icons ──────────────────────────────────────────────────────── */
-const ICONS = {
-  cheetah: '<path fill="currentColor" d="M12 2 4 8v5c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V8l-8-6Zm0 4.2 4 3V13c0 3.2-1.7 5.3-4 6-2.3-.7-4-2.8-4-6V9.2l4-3Z"/>',
-  send: '<path fill="currentColor" d="M2.5 21 23 12 2.5 3 2.5 10l14 2-14 2z"/>',
-  plus: '<path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>',
-  close: '<path fill="currentColor" d="M12 10.6 7.4 6 6 7.4l4.6 4.6L6 16.6 7.4 18l4.6-4.6 4.6 4.6 1.4-1.4-4.6-4.6L18 7.4 16.6 6z"/>',
-  chevron: '<path fill="currentColor" d="M9 6l6 6-6 6z"/>',
-  folder: '<path fill="currentColor" d="M3 5h6l2 2h10v12H3z" opacity=".85"/>',
-  trash: '<path fill="currentColor" d="M6 7h12l-1 13H7L6 7Zm3-4h6l1 2H8l1-2Z"/>',
-  clock: '<path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 10.6V6h-2v7.4l5 3 1-1.7-4-2.1Z"/>',
-  layers: '<path fill="currentColor" d="M12 3 2 9l10 6 10-6-10-6Zm0 12.5L4.2 11 2 12.3l10 6 10-6-2.2-1.3L12 15.5Z"/>',
-  moon: '<path fill="currentColor" d="M12.5 3A9 9 0 1 0 21 14.2 7.5 7.5 0 0 1 12.5 3Z"/>',
-  sun: '<path fill="currentColor" d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0-6h0v3m0 16v3M1 12h3m16 0h3M4.2 4.2 6.3 6.3m11.4 11.4 2.1 2.1M19.8 4.2l-2.1 2.1M6.3 17.7l-2.1 2.1" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
-  search: '<path fill="currentColor" d="M10 3a7 7 0 1 0 4.2 12.6l4.6 4.6 1.4-1.4-4.6-4.6A7 7 0 0 0 10 3Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"/>',
-  save: '<path fill="currentColor" d="M4 4h12l4 4v12H4V4Zm4 0v6h8V4H8Zm-1 9h10v7H7v-7Z"/>',
-  copy: '<path fill="currentColor" d="M8 2h10v14h-2V4H8V2ZM4 6h10v16H4V6Z"/>',
-  sidebar: '<path fill="currentColor" d="M3 4h18v16H3V4Zm7 2H5v12h5V6Z"/>',
-  spinner: '<path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-3a7 7 0 0 0-7-7V2Z"/>',
-  inbox: '<path fill="currentColor" d="M3 4h18v10h-6a3 3 0 0 1-6 0H3V4Zm0 12h5.4a5 5 0 0 0 7.2 0H21v4H3v-4Z"/>',
-  cog: '<path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm9 4-2.1-.7a7 7 0 0 0-.6-1.5l1-2-1.6-1.6-2 1a7 7 0 0 0-1.5-.6L13.5 3h-3l-.7 2.1a7 7 0 0 0-1.5.6l-2-1L4.7 6.3l1 2a7 7 0 0 0-.6 1.5L3 10.5v3l2.1.7a7 7 0 0 0 .6 1.5l-1 2 1.6 1.6 2-1a7 7 0 0 0 1.5.6l.7 2.1h3l.7-2.1a7 7 0 0 0 1.5-.6l2 1 1.6-1.6-1-2a7 7 0 0 0 .6-1.5l2.1-.7v-1.5Z"/>'
-};
+/* ── Icons ──────────────────────────────────────────────────────
+   Hugeicons (stroke style), baked into icons.js by `npm run icons`. The
+   brand mark is ours: three spots at a sprint, cut by the tear line.   */
+const BRAND = `
+  <circle cx="6.4" cy="7.6" r="2.1" fill="currentColor"/>
+  <circle cx="12.6" cy="5.2" r="1.5" fill="currentColor" opacity=".6"/>
+  <circle cx="9.2" cy="13.4" r="1.5" fill="currentColor" opacity=".6"/>
+  <path d="M3 19.4C7.6 19.4 14.4 17.2 21 11.4" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" fill="none"/>`;
 
 const icon = (name, size = 16) =>
-  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke-width="1.6" aria-hidden="true">${
+    name === 'brand' ? BRAND : ICONS[name] || ''
+  }</svg>`;
 
 /* ── Toasts ─────────────────────────────────────────────────────── */
 export const toast = (message, kind = '') => {
@@ -159,7 +149,7 @@ const restoreFocus = (focus) => {
 
 const renderTitlebar = () => `
     <div class="titlebar">
-      <div class="brand">${icon('cheetah', 17)}<span>Cheetah</span></div>
+      <div class="brand">${icon('brand', 18)}<span>Cheetah</span></div>
       <button class="btn btn-ghost btn-sm" data-act="toggle-sidebar" title="Toggle sidebar (${MOD}B)">${icon('sidebar', 15)}</button>
       <div class="drag-spacer"></div>
       <button class="btn btn-ghost btn-sm" data-act="palette" title="Command palette (${MOD}K)">
@@ -182,7 +172,7 @@ const renderFooter = () => {
   return `
     <div class="footer">
       <button data-act="new-tab">${icon('plus', 13)} New request</button>
-      <button data-act="import-curl">Import cURL</button>
+      <button data-act="import-curl">${icon('terminal', 13)} Import cURL</button>
       <button data-act="copy-curl">${icon('copy', 12)} Copy as cURL</button>
       <div class="spacer"></div>
       ${missing.size ? `<span class="var-missing">Unresolved: ${[...missing].map((name) => escapeHtml(name)).join(', ')}</span>` : ''}
@@ -203,7 +193,7 @@ const renderSidebar = () => `
         .join('')}
     </div>
     <div class="sidebar-search">
-      <input class="input" style="flex:1" placeholder="Filter…" data-act="sidebar-filter" data-focus-key="sidebar-filter" value="${escapeHtml(state.sidebarQuery)}">
+      <input class="input" style="flex:1" placeholder="${state.sidebarTab === 'collections' ? 'Filter requests' : 'Filter history'}" data-act="sidebar-filter" data-focus-key="sidebar-filter" value="${escapeHtml(state.sidebarQuery)}">
       ${state.sidebarTab === 'collections' ? `<button class="btn btn-sm" data-act="new-collection" title="New collection">${icon('plus', 13)}</button>` : `<button class="btn btn-sm" data-act="clear-history" title="Clear history">${icon('trash', 13)}</button>`}
     </div>
     <div class="sidebar-list">
@@ -228,10 +218,10 @@ const renderCollections = () => {
       return `
         <div class="tree-group">
           <button class="tree-row" data-act="toggle-collection" data-id="${collection.id}">
-            <span class="chev ${open ? 'open' : ''}">${icon('chevron', 12)}</span>
+            <span class="chev ${open ? 'open' : ''}">${icon('chevron', 14)}</span>
             <span class="label">${escapeHtml(collection.name)}</span>
             <span class="count">${collection.requests.length}</span>
-            <span class="row-action" data-act="collection-menu" data-id="${collection.id}" title="Rename or delete">⋯</span>
+            <span class="row-action" data-act="collection-menu" data-id="${collection.id}" title="Rename or delete">${icon('more', 14)}</span>
           </button>
           ${open ? `<div class="tree-children">${shown.map((item) => renderSavedRequest(collection.id, item)).join('') || '<div class="empty-state">Empty</div>'}</div>` : ''}
         </div>`;
@@ -245,10 +235,10 @@ const renderSavedRequest = (collectionId, request) => {
   const tab = currentTab();
   const active = tab && tab.origin && tab.origin.requestId === request.id;
   return `
-    <button class="tree-row${active ? ' active' : ''}" data-act="open-request" data-collection="${collectionId}" data-id="${request.id}">
+    <button class="tree-row${active ? ' active' : ''}" data-method="${request.method}" data-act="open-request" data-collection="${collectionId}" data-id="${request.id}">
       <span class="method m-${request.method}">${request.method}</span>
       <span class="label" title="${escapeHtml(request.url)}">${escapeHtml(request.name)}</span>
-      <span class="row-action" data-act="delete-request" data-collection="${collectionId}" data-id="${request.id}" title="Delete">${icon('trash', 12)}</span>
+      <span class="row-action" data-act="delete-request" data-collection="${collectionId}" data-id="${request.id}" title="Delete">${icon('trash', 14)}</span>
     </button>`;
 };
 
@@ -262,7 +252,7 @@ const renderHistory = () => {
     .map((item) => {
       const path = item.url.replace(/^https?:\/\//, '');
       return `
-        <button class="tree-row" data-act="open-history" data-id="${item.id}">
+        <button class="tree-row" data-method="${item.method}" data-act="open-history" data-id="${item.id}">
           <span class="method m-${item.method}">${item.method}</span>
           <span class="label" title="${escapeHtml(item.url)}">${escapeHtml(path || '(empty)')}</span>
           <span class="count s-${statusClass(item.status)}" style="background:none">${item.status ?? '—'}</span>
@@ -277,7 +267,7 @@ const renderTabstrip = () => `
     ${state.tabs
       .map(
         (tab) => `
-        <div class="tab${tab.id === state.activeTab ? ' active' : ''}" data-act="select-tab" data-id="${tab.id}" title="${escapeHtml(tab.request.url || tab.request.name)}">
+        <div class="tab${tab.id === state.activeTab ? ' active' : ''}" data-method="${tab.request.method}" data-act="select-tab" data-id="${tab.id}" title="${escapeHtml(tab.request.url || tab.request.name)}">
           <span class="method m-${tab.request.method}">${tab.request.method}</span>
           <span class="title">${escapeHtml(tab.request.name)}</span>
           ${tab.dirty ? '<span class="dot" title="Unsaved changes"></span>' : ''}
@@ -293,7 +283,7 @@ const renderUrlbar = (tab) => {
   const missing = missingVars(resolvableText(tab.request), vars);
   return `
     <div class="urlbar">
-      <select class="method-select m-${tab.request.method}" data-act="set-method">
+      <select class="method-select" data-method="${tab.request.method}" data-act="set-method">
         ${METHODS.map((method) => `<option${method === tab.request.method ? ' selected' : ''}>${method}</option>`).join('')}
       </select>
       <div class="url-wrap">
@@ -311,11 +301,19 @@ const renderUrlbar = (tab) => {
 };
 
 /* ── Render: request pane ───────────────────────────────────────── */
+// The response pane's top rule reads the outcome: a sweep while in flight,
+// then the status colour once the server has answered.
+const responseEdge = (tab) => {
+  if (tab.loading) return ' sending';
+  if (!tab.response) return '';
+  return ` s-${tab.response.ok ? statusClass(tab.response.status) : 'err'}`;
+};
+
 const renderPanes = (tab) => `
   <div class="panes" style="--req-h:${state.reqHeight}%">
     <section class="pane">${renderRequestPane(tab)}</section>
     <div class="splitter" data-act="split"></div>
-    <section class="pane">${renderResponsePane(tab)}</section>
+    <section class="pane response${responseEdge(tab)}">${renderResponsePane(tab)}</section>
   </div>`;
 
 const activeCount = (rows) => rows.filter((row) => row.enabled && row.key).length;
@@ -476,8 +474,8 @@ const renderResponsePane = (tab) => {
       <div class="tabrow"><span class="subtab" aria-selected="true">Response</span>
         <div class="status-bar"><span class="metric">Sending…</span></div></div>
       <div class="pane-body"><div class="response-placeholder">
-        ${icon('spinner', 34).replace('<svg', '<svg class="spin"')}
-        <div>Waiting for ${escapeHtml(hostOf(tab.request.url))}…</div>
+        ${icon('flash', 30)}
+        <div>Waiting for <strong>${escapeHtml(hostOf(tab.request.url))}</strong></div>
         <div class="hint">Press <kbd>Esc</kbd> to cancel</div>
       </div></div>`;
   }
@@ -486,9 +484,9 @@ const renderResponsePane = (tab) => {
     return `
       <div class="tabrow"><span class="subtab" aria-selected="true">Response</span></div>
       <div class="pane-body"><div class="response-placeholder">
-        ${icon('inbox', 34)}
-        <div><strong>No response yet</strong></div>
-        <div class="hint">Hit <kbd>${MOD}↵</kbd> to send this request.</div>
+        ${icon('inbox', 30)}
+        <div><strong>Nothing sent yet</strong></div>
+        <div class="hint">Press <kbd>${MOD}↵</kbd> to run this request.</div>
       </div></div>`;
   }
 
@@ -604,8 +602,8 @@ const renderResponseBody = (tab, response, lang, cookies) => {
 
   return `
     <div class="tabrow" style="border-bottom:none;min-height:30px">
-      <button class="btn btn-sm btn-ghost" data-act="toggle-pretty" aria-selected="${tab.pretty}">${tab.pretty ? 'Pretty' : 'Raw'}</button>
-      <button class="btn btn-sm btn-ghost" data-act="toggle-wrap">${tab.wrap ? 'Wrap: on' : 'Wrap: off'}</button>
+      <button class="btn btn-sm btn-ghost" data-act="toggle-pretty" aria-selected="${tab.pretty}">${icon('code', 14)}${tab.pretty ? 'Formatted' : 'Raw'}</button>
+      <button class="btn btn-sm btn-ghost" data-act="toggle-wrap" aria-selected="${tab.wrap}">${icon('wrap', 14)}${tab.wrap ? 'Wrapped' : 'No wrap'}</button>
       ${response.truncated ? '<span class="hint" style="color:var(--warn)">Body truncated at 25 MB</span>' : ''}
     </div>
     <pre class="code-view${tab.wrap ? ' wrap' : ''}">${body}</pre>`;

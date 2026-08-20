@@ -30,7 +30,8 @@ const createWindow = () => {
     minWidth: 900,
     minHeight: 560,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    backgroundColor: '#0e1116',
+    backgroundColor: '#131110',
+    icon: path.join(__dirname, '..', 'icon.png'),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

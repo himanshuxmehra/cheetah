@@ -61,6 +61,24 @@ const fromBase64 = (base64) => {
 
 const decodeText = (base64) => new TextDecoder('utf-8').decode(fromBase64(base64));
 
+// Decoding, prettifying and highlighting a large response body is expensive,
+// and `render()` re-runs on every keystroke/click anywhere in the app — so
+// without this cache a big body gets re-processed on completely unrelated
+// interactions (typing in the sidebar filter, switching tabs, etc).
+const bodyMarkupCache = new WeakMap();
+
+const getResponseBodyMarkup = (tab, response, lang) => {
+  const cached = bodyMarkupCache.get(tab);
+  if (cached && cached.response === response && cached.pretty === tab.pretty && cached.find === state.find && cached.lang === lang) {
+    return cached.markup;
+  }
+  const text = decodeText(response.body);
+  const shown = tab.pretty ? prettify(text, lang) : text;
+  const markup = state.find ? markMatches(shown, state.find) : highlight(shown, lang);
+  bodyMarkupCache.set(tab, { response, pretty: tab.pretty, find: state.find, lang, markup });
+  return markup;
+};
+
 /* ── URL ⇄ params sync ──────────────────────────────────────────── */
 const splitUrl = (url) => {
   const at = url.indexOf('?');
@@ -590,15 +608,12 @@ const renderResponseBody = (tab, response, lang, cookies) => {
       <button class="btn btn-sm" data-act="save-response">${icon('save', 13)} Save to file</button></div>`;
   }
 
-  let text;
+  let body;
   try {
-    text = decodeText(response.body);
+    body = getResponseBodyMarkup(tab, response, lang);
   } catch {
     return '<div class="error-box"><h4>Could not decode body</h4><p>The response is not valid UTF-8 text.</p></div>';
   }
-
-  const shown = tab.pretty ? prettify(text, lang) : text;
-  const body = state.find ? markMatches(shown, state.find) : highlight(shown, lang);
 
   return `
     <div class="tabrow" style="border-bottom:none;min-height:30px">
@@ -1412,7 +1427,7 @@ document.addEventListener('input', (event) => {
 
     case 'find-input':
       state.find = el.value;
-      return render();
+      return refreshResponseBody();
 
     default:
       return;
@@ -1466,6 +1481,21 @@ document.addEventListener('change', (event) => {
       return;
   }
 });
+
+// Used while typing in the find-in-response box: re-highlighting a big body
+// on every keystroke is already costly, so this skips the full app rebuild
+// (`render()` tears down and reparses the entire DOM) and only touches the
+// response pane itself.
+const refreshResponseBody = () => {
+  const tab = currentTab();
+  if (!tab || !tab.response || !tab.response.ok) return;
+  const el = $('#response-body');
+  if (!el) return;
+  const contentType = headerValue(tab.response.headers, 'content-type');
+  const lang = detectLanguage(contentType);
+  const cookies = (tab.response.headers || []).filter(([key]) => key.toLowerCase() === 'set-cookie');
+  el.innerHTML = renderResponseBody(tab, tab.response, lang, cookies);
+};
 
 // Repaint only the chrome that reflects request state, so typing keeps focus.
 const refreshChrome = () => {

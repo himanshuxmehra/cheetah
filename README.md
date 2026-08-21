@@ -36,6 +36,18 @@ chains and raw transfer sizes.
 | `⌘B` | Toggle sidebar |
 | `Esc` | Cancel an in-flight request, or close a dialog |
 
+## Install
+
+macOS and Linux, straight from source — clones the repo, builds it, and installs
+the app (`/Applications` on macOS, `dpkg`/`rpm` on Linux):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/himanshuxmehra/cheetah/main/scripts/install.sh | bash
+```
+
+Requires `git` and Node.js 18+. Windows users should clone the repo and run
+`npm run make` to get a Squirrel installer under `out/make`.
+
 ## Development
 
 ```bash
